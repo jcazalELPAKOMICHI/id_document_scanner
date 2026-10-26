@@ -215,6 +215,18 @@ En la pantalla inicial podés elegir:
 
 El backend simulado está en `example/lib/services/fake_identity_backend.dart`. Ahí va tu llamada real.
 
+## Publicar una versión
+
+El workflow `.github/workflows/publish.yml` publica en pub.dev cada vez que se sube un tag `vX.Y.Z` sobre un commit de `main`. Antes de publicar verifica que el tag coincida con la `version` del `pubspec.yaml` y corre `flutter analyze`, los tests y `pub publish --dry-run`. Si algo falla, no publica.
+
+1. Subí la `version` en `pubspec.yaml` y agregá la entrada en `CHANGELOG.md`.
+2. Commiteá y subí a `main`.
+3. Creá el tag y subilo:
+
+```bash
+git tag v0.2.0 && git push origin v0.2.0
+```
+
 ## Limitaciones conocidas
 
 - Solo funciona en orientación vertical, con la tarjeta horizontal. Para fijar la orientación, llama a `SystemChrome.setPreferredOrientations([.portraitUp])`.
