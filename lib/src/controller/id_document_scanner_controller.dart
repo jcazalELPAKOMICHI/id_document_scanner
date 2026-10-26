@@ -155,7 +155,10 @@ class IdDocumentScannerController extends ChangeNotifier {
       final controller = CameraController(back, resolutionPreset, enableAudio: false, imageFormatGroup: .yuv420);
       camera = controller;
       await controller.initialize();
-      if (_disposed) return controller.dispose();
+      if (_disposed) {
+        await controller.dispose();
+        return;
+      }
       await controller.lockCaptureOrientation(.portraitUp);
       await _startStream();
     } on CameraException catch (exception) {

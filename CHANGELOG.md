@@ -1,3 +1,8 @@
+## 0.1.1
+
+* Shorter package description.
+* Fix an analyzer warning in the controller and format the code.
+
 ## 0.1.0
 
 * Initial release.
