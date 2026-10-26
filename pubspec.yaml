@@ -1,0 +1,31 @@
+name: id_document_scanner
+description: >-
+  Camera scanner for Paraguayan identity cards with a guided overlay, exact
+  card crop, offline MRZ OCR, document verification and screen/print
+  reproduction detection. Pure Dart, no Google or ML Kit.
+version: 0.1.0
+topics:
+  - camera
+  - document-scanner
+  - ocr
+  - mrz
+  - kyc
+
+environment:
+  sdk: ^3.12.0
+  flutter: ">=3.44.0"
+
+platforms:
+  android:
+  ios:
+
+dependencies:
+  camera: ^0.12.1
+  flutter:
+    sdk: flutter
+  image: ^4.12.0
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  flutter_lints: ^6.0.0

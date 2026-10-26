@@ -1,0 +1,9 @@
+.dart_tool/
+.fvm/
+.fvmrc
+.flutter-plugins-dependencies
+build/
+pubspec.lock
+tool/fonts/
+example/build/
+example/.dart_tool/

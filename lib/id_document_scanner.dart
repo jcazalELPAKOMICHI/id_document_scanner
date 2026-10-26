@@ -1,0 +1,47 @@
+/// Camera-based ID card scanner with a customizable overlay and on-device,
+/// pure-Dart document detection (no ML Kit or cloud services).
+library;
+
+export 'src/analysis/card_edge_refiner.dart';
+export 'src/analysis/detection_stabilizer.dart';
+export 'src/analysis/fitted_line.dart';
+export 'src/analysis/frame_analyzer.dart';
+export 'src/camera/document_cropper.dart';
+export 'src/constants/scanner_constants.dart';
+export 'src/controller/id_document_scanner_controller.dart';
+export 'src/geometry/guide_geometry.dart';
+export 'src/models/capture_validation.dart';
+export 'src/models/capture_validation_status.dart';
+export 'src/models/capture_validator.dart';
+export 'src/models/card_corners.dart';
+export 'src/models/cropped_card.dart';
+export 'src/models/detection_config.dart';
+export 'src/models/document_capture.dart';
+export 'src/models/document_field.dart';
+export 'src/models/document_side.dart';
+export 'src/models/document_type.dart';
+export 'src/models/edge_measurement.dart';
+export 'src/models/frame_analysis.dart';
+export 'src/models/luma_frame.dart';
+export 'src/models/scan_result.dart';
+export 'src/models/scan_status.dart';
+export 'src/models/scanner_messages.dart';
+export 'src/models/scanner_overlay_state.dart';
+export 'src/models/scanner_overlay_style.dart';
+export 'src/security/reproduction_check.dart';
+export 'src/security/reproduction_detector.dart';
+export 'src/templates/document_template.dart';
+export 'src/templates/paraguay_id_templates.dart';
+export 'src/widgets/id_document_scanner.dart';
+export 'src/widgets/scanner_overlay.dart';
+export 'src/mrz/mrz_check_digit.dart';
+export 'src/mrz/mrz_constants.dart';
+export 'src/mrz/mrz_data.dart';
+export 'src/mrz/mrz_parser.dart';
+export 'src/mrz/mrz_sex.dart';
+export 'src/ocr/mrz_reader.dart';
+export 'src/ocr/mrz_reading.dart';
+export 'src/verification/document_rejection_reason.dart';
+export 'src/verification/document_verification.dart';
+export 'src/verification/document_verification_status.dart';
+export 'src/verification/paraguay_id_verifier.dart';

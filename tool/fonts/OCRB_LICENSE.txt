@@ -1,0 +1,9 @@
+OCR-B outline fonts (ocrb10.otf) — CTAN package "ocr-b-outline", Z. Wagner,
+from the METAFONT sources by Norbert Schwarz (Ruhr-Universität Bochum).
+
+"The license of the outline fonts is the same as for the original fonts,
+i.e. you may freely use, modify, and/or distribute any of these files,
+without limitation."
+
+Only used at development time by tool/generate_references_test.dart to render
+the glyph templates in lib/src/ocr/ocrb_glyphs.g.dart. It is not bundled.
