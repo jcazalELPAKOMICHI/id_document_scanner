@@ -4,6 +4,8 @@ description: >-
   card crop, offline MRZ OCR, document verification and screen/print
   reproduction detection. Pure Dart, no Google or ML Kit.
 version: 0.1.0
+repository: https://github.com/jcazalELPAKOMICHI/id_document_scanner
+issue_tracker: https://github.com/jcazalELPAKOMICHI/id_document_scanner/issues
 topics:
   - camera
   - document-scanner
