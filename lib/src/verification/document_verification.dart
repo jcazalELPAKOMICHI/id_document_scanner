@@ -12,6 +12,7 @@ class DocumentVerification {
     this.mrz,
     this.mrzLines,
     this.score,
+    this.diagnostics,
   });
 
   final DocumentVerificationStatus status;
@@ -26,6 +27,10 @@ class DocumentVerification {
 
   /// Header correlation (front) or OCR confidence (back), 0..1.
   final double? score;
+
+  /// Non-personal summary of how the check went (scores, masked MRZ), shown
+  /// with `showDebugInfo` to calibrate on real cards.
+  final String? diagnostics;
 
   bool get isVerified => status == .verified;
 }

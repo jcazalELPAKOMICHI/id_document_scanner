@@ -26,18 +26,19 @@ abstract final class ParaguayIdTemplates {
   );
 
   /// Previous design: photo on the right, surnames and names stacked under a
-  /// single label, document number below the photo.
+  /// single label, document number below the photo. Measured on a
+  /// full-resolution photo of a real card (layout only).
   static const DocumentTemplate legacyFront = DocumentTemplate(
     type: .paraguayIdLegacy,
     side: .front,
     fields: {
-      .fullName: Rect.fromLTWH(0.065, 0.265, 0.33, 0.115),
-      .birthDate: Rect.fromLTWH(0.065, 0.430, 0.17, 0.07),
-      .sex: Rect.fromLTWH(0.445, 0.405, 0.15, 0.07),
-      .birthPlace: Rect.fromLTWH(0.065, 0.550, 0.28, 0.07),
-      .expiryDate: Rect.fromLTWH(0.065, 0.665, 0.17, 0.07),
-      .documentNumber: Rect.fromLTWH(0.67, 0.750, 0.19, 0.075),
-      .photo: Rect.fromLTWH(0.625, 0.205, 0.27, 0.555),
+      .fullName: Rect.fromLTWH(0.065, 0.245, 0.40, 0.12),
+      .birthDate: Rect.fromLTWH(0.065, 0.405, 0.18, 0.07),
+      .sex: Rect.fromLTWH(0.48, 0.405, 0.18, 0.07),
+      .birthPlace: Rect.fromLTWH(0.065, 0.520, 0.32, 0.07),
+      .expiryDate: Rect.fromLTWH(0.065, 0.635, 0.18, 0.07),
+      .documentNumber: Rect.fromLTWH(0.715, 0.745, 0.185, 0.075),
+      .photo: Rect.fromLTWH(0.67, 0.200, 0.29, 0.560),
     },
   );
 

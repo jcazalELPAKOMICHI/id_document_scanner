@@ -203,7 +203,11 @@ class _IdDocumentScannerState extends State<IdDocumentScanner> with WidgetsBindi
                         top: padding.top,
                         left: 0,
                         right: 0,
-                        child: ScannerDebugPanel(analysis: state.analysis, style: widget.style),
+                        child: ScannerDebugPanel(
+                          analysis: state.analysis,
+                          style: widget.style,
+                          checks: controller.lastCheckDiagnostics,
+                        ),
                       ),
                   ],
                 );

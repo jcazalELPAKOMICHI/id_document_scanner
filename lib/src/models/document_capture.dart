@@ -59,7 +59,13 @@ class DocumentCapture {
     reproduction: reproduction,
   );
 
-  DocumentTemplate get template => DocumentTemplate.of(documentType, side);
+  /// Card design actually photographed: the one the verification
+  /// recognised, or the expected [documentType] when it did not run.
+  DocumentType get detectedType => verification?.detectedType ?? documentType;
+
+  /// Field layout of the [detectedType] design, so a previous-design card
+  /// scanned while expecting the current one is still cropped right.
+  DocumentTemplate get template => DocumentTemplate.of(detectedType, side);
 
   /// JPEG crops of every field in [template], ready to feed an OCR step.
   Future<Map<DocumentField, Uint8List>> cropFields() => DocumentCropper.cropFields(cardImage, template);

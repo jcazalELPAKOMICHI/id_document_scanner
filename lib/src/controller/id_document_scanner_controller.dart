@@ -113,6 +113,11 @@ class IdDocumentScannerController extends ChangeNotifier {
   /// Whether the last rejection was a photo of a screen or a printout.
   bool reproductionDetected = false;
 
+  /// Non-personal summary of the last capture's checks (crop, screen or
+  /// printout scores, verification), kept until the next capture so
+  /// `showDebugInfo` can show why a card was rejected.
+  String? lastCheckDiagnostics;
+
   final StreamController<DocumentCapture> _captures = StreamController.broadcast();
   final StreamController<ScanResult> _results = StreamController.broadcast();
   int _sideIndex = 0;
@@ -265,6 +270,11 @@ class IdDocumentScannerController extends ChangeNotifier {
   }
 
   Future<void> _validate(DocumentCapture captured) async {
+    final reproduction = captured.reproduction;
+    lastCheckDiagnostics =
+        'crop ${captured.isPreciseCrop ? 'precise' : 'not found'} · copy '
+        '${reproduction.lumaScore.toStringAsFixed(2)}/${reproduction.chromaScore.toStringAsFixed(2)}'
+        '${reproduction.isReproduction ? ' FLAGGED' : ''}';
     if (requirePreciseCrop && !captured.isPreciseCrop) return _reject(null, cropFailed: true);
     if (rejectReproductions && captured.reproduction.isReproduction) return _reject(null, reproduction: true);
     _setStatus(.validating);
@@ -274,6 +284,11 @@ class IdDocumentScannerController extends ChangeNotifier {
       if (_disposed) return;
       result = result.withVerification(verification);
       capture = result;
+      lastCheckDiagnostics = [
+        lastCheckDiagnostics,
+        '${verification.status.name} ${verification.detectedType?.name ?? ''}',
+        verification.diagnostics,
+      ].nonNulls.join('\n');
       if (verification.status == .rejected) return _reject(null, reason: verification.reason);
     }
     CaptureValidation validation;

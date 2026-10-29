@@ -5,9 +5,12 @@ import '../models/scanner_overlay_style.dart';
 
 /// Raw detection values, for calibrating `DetectionConfig` on real devices.
 class ScannerDebugPanel extends StatelessWidget {
-  const ScannerDebugPanel({super.key, required this.analysis, required this.style});
+  const ScannerDebugPanel({super.key, required this.analysis, required this.style, this.checks});
 
   final FrameAnalysis? analysis;
+
+  /// Summary of the last capture's checks (`lastCheckDiagnostics`).
+  final String? checks;
   final ScannerOverlayStyle style;
 
   @override
@@ -17,7 +20,7 @@ class ScannerDebugPanel extends StatelessWidget {
       child: Padding(
         padding: const .all(8),
         child: Text(
-          analysis?.toString() ?? '-',
+          [analysis?.toString() ?? '-', checks].nonNulls.join('\n'),
           style: style.subtitleTextStyle.copyWith(fontFamily: 'monospace', fontSize: 11),
         ),
       ),
