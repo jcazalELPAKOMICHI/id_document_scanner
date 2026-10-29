@@ -2,7 +2,7 @@ name: id_document_scanner
 description: >-
   Paraguayan ID card scanner: guided camera overlay, exact card crop, offline
   MRZ OCR and screen/print detection. Pure Dart, no ML Kit.
-version: 0.1.1
+version: 1.0.1
 repository: https://github.com/jcazalELPAKOMICHI/id_document_scanner
 issue_tracker: https://github.com/jcazalELPAKOMICHI/id_document_scanner/issues
 topics:
