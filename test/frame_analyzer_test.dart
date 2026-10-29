@@ -55,6 +55,31 @@ void main() {
     expect(analyze(scene).status, ScanStatus.tooFar);
   });
 
+  test('card held a few degrees off is still ready', () {
+    for (final angle in [-4.0, 4.0]) {
+      final scene = SyntheticScene();
+      final guide = scene.guide;
+      final tilted = img.copyRotate(
+        img.copyResize(specimen, width: guide.width.round()).convert(numChannels: 4),
+        angle: angle,
+      );
+      scene.paste(
+        tilted,
+        Rect.fromCenter(center: guide.center, width: tilted.width.toDouble(), height: tilted.height.toDouble()),
+      );
+      expect(analyze(scene).status, ScanStatus.ready);
+    }
+  });
+
+  test('a finger over one side does not hide the card', () {
+    final scene = SyntheticScene();
+    final guide = scene.guide;
+    scene
+      ..paste(specimen, guide)
+      ..fill(Rect.fromLTWH(guide.left - 30, guide.center.dy - 40, 90, 110), 175);
+    expect(analyze(scene).status, ScanStatus.ready);
+  });
+
   test('tilted card is not ready', () {
     final scene = SyntheticScene();
     final guide = scene.guide;

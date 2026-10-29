@@ -57,6 +57,11 @@ class ParaguayIdVerifier {
       if (reading.isValid) return _checkMrz(_snapIssuingState(reading));
       if (bestReading == null || reading.confidence > bestReading.confidence) bestReading = reading;
     }
+    // A crop with some background (or a card printed slightly off) moves the
+    // MRZ out of the template box: search the whole lower part of the card.
+    final wide = mrzReader.read(card, _mrzFallbackZone);
+    if (wide != null && wide.isValid) return _checkMrz(_snapIssuingState(wide));
+    if (wide != null && (bestReading == null || wide.confidence > bestReading.confidence)) bestReading = wide;
     return DocumentVerification(
       status: .rejected,
       reason: bestReading == null ? .mrzUnreadable : .mrzInvalid,
@@ -138,4 +143,5 @@ class ParaguayIdVerifier {
   }
 
   static const double _mrzZoneMargin = 0.02;
+  static const Rect _mrzFallbackZone = Rect.fromLTRB(0, 0.5, 1, 1);
 }
