@@ -18,6 +18,7 @@ import 'document_verification.dart';
 import 'header_matcher.dart';
 import 'header_reference_regions.dart';
 import 'paraguay_front_references.g.dart';
+import 'verification_diagnostics.dart';
 
 /// Checks that a cropped card really is a Paraguayan "Cédula de Identidad".
 ///
@@ -47,14 +48,22 @@ class ParaguayIdVerifier {
       });
 
   DocumentVerification verifyBack(GrayImage card, DocumentType expectedType) {
-    // Try the expected design first, then the other one (auto-detect).
+    // Try the expected design first, then the other one (auto-detect), then
+    // the whole lower part of the card: a crop with some background (or a
+    // card printed slightly off) moves the MRZ out of the template box.
     final types = [expectedType, ...DocumentType.values.where((type) => type != expectedType)];
+    final zones = {
+      for (final type in types)
+        type.name: DocumentTemplate.of(type, .back).fields[DocumentField.mrz]!.inflate(_mrzZoneMargin),
+      _fallbackZoneName: _mrzFallbackZone,
+    };
     MrzReading? bestReading;
-    for (final type in types) {
-      final zone = DocumentTemplate.of(type, .back).fields[DocumentField.mrz]!;
-      final reading = mrzReader.read(card, zone.inflate(_mrzZoneMargin));
+    final attempts = <String>[];
+    for (final MapEntry(key: name, value: zone) in zones.entries) {
+      final reading = mrzReader.read(card, zone);
+      if (reading != null && reading.isValid) return _checkMrz(_snapIssuingState(reading));
+      attempts.add(VerificationDiagnostics.mrzAttempt(name, mrzReader.textLineCount(card, zone), reading));
       if (reading == null) continue;
-      if (reading.isValid) return _checkMrz(_snapIssuingState(reading));
       if (bestReading == null || reading.confidence > bestReading.confidence) bestReading = reading;
     }
     return DocumentVerification(
@@ -62,6 +71,7 @@ class ParaguayIdVerifier {
       reason: bestReading == null ? .mrzUnreadable : .mrzInvalid,
       mrzLines: bestReading?.lines,
       score: bestReading?.confidence,
+      diagnostics: attempts.join('\n'),
     );
   }
 
@@ -109,33 +119,42 @@ class ParaguayIdVerifier {
   /// design was expected (the result says which one it is).
   DocumentVerification verifyFront(GrayImage card, DocumentType expectedType) {
     final normalized = card.resize(HeaderReferenceRegions.cardWidth, HeaderReferenceRegions.cardHeight);
-    final scores = {
-      DocumentType.paraguayIdCurrent: _headerScore(
+    final regionScores = {
+      DocumentType.paraguayIdCurrent: _headerScores(
         normalized,
         paraguayCurrentFrontReferences,
         HeaderReferenceRegions.paraguayCurrentFront,
       ),
-      DocumentType.paraguayIdLegacy: _headerScore(
+      DocumentType.paraguayIdLegacy: _headerScores(
         normalized,
         paraguayLegacyFrontReferences,
         HeaderReferenceRegions.paraguayLegacyFront,
       ),
     };
+    final scores = regionScores.map((type, values) => MapEntry(type, values.reduce((a, b) => a + b) / values.length));
     final best = scores.entries.reduce((a, b) => a.value >= b.value ? a : b);
+    final diagnostics = VerificationDiagnostics.front(regionScores);
     if (best.value < minHeaderScore) {
-      return DocumentVerification(status: .rejected, reason: .frontNotRecognized, score: best.value);
+      return DocumentVerification(
+        status: .rejected,
+        reason: .frontNotRecognized,
+        score: best.value,
+        diagnostics: diagnostics,
+      );
     }
-    return DocumentVerification(status: .verified, detectedType: best.key, score: best.value);
+    return DocumentVerification(status: .verified, detectedType: best.key, score: best.value, diagnostics: diagnostics);
   }
 
-  double _headerScore(GrayImage card, List<(int, int, String)> references, List<Rect> regions) {
+  /// Correlation of each reference region (title, coat of arms) with [card].
+  List<double> _headerScores(GrayImage card, List<(int, int, String)> references, List<Rect> regions) {
     const matcher = HeaderMatcher();
-    var total = 0.0;
-    for (var i = 0; i < references.length; i++) {
-      total += matcher.match(card, HeaderMatcher.decode(references[i]), regions[i]);
-    }
-    return total / references.length;
+    return List.generate(
+      references.length,
+      (i) => matcher.match(card, HeaderMatcher.decode(references[i]), regions[i]),
+    );
   }
 
   static const double _mrzZoneMargin = 0.02;
+  static const Rect _mrzFallbackZone = Rect.fromLTRB(0, 0.5, 1, 1);
+  static const String _fallbackZoneName = 'wide';
 }

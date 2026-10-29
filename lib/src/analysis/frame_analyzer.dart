@@ -92,8 +92,9 @@ class FrameAnalyzer {
     if (detected.any((edge) => edge.skew > config.maxSkew)) return .notAligned;
     final aligned = detected.where((edge) => edge.offset.abs() <= config.edgeTolerance).length;
     if (aligned < config.minDetectedSides) {
-      final inward = detected.where((edge) => edge.offset > config.edgeTolerance).length;
-      return inward >= config.minDetectedSides ? .tooFar : .notAligned;
+      // On average the edges sit inside the guide: the card looks small.
+      final meanOffset = detected.map((edge) => edge.offset).reduce((a, b) => a + b) / detected.length;
+      return meanOffset > config.edgeTolerance * _tooFarFraction ? .tooFar : .notAligned;
     }
     if (stats.glareRatio > config.maxGlareRatio) return .glare;
     if (sharpness < config.minSharpness) return .blurry;
@@ -130,9 +131,11 @@ class FrameAnalyzer {
     );
   }
 
-  /// Projects the signed gradient of every position in the search band along
-  /// the side and keeps the strongest line; coverage is how much of the side
-  /// actually shows that edge (with the same polarity) near that line.
+  /// Projects the signed gradient along slightly tilted lines across the
+  /// search band, so a card held a few degrees off still shows a straight,
+  /// continuous edge. The card border is the outermost strong line that runs
+  /// along most of the side: text and bands printed inside the card can be
+  /// stronger, so the absolute maximum is not used.
   EdgeMeasurement _measure({
     required int lineStart,
     required int lineEnd,
@@ -140,113 +143,105 @@ class FrameAnalyzer {
     required int searchTo,
     required int searchLimit,
     required int Function(int along, int across) gradient,
-    required double Function(int across) offsetOf,
+    required double Function(double across) offsetOf,
   }) {
     final from = max(1, searchFrom);
     final to = min(searchLimit - 2, searchTo);
     final length = lineEnd - lineStart;
     if (to <= from || length <= 0) return EdgeMeasurement.none;
 
-    final (peak, peakValue) = _strongestLine(from, to, lineStart, lineEnd, gradient);
+    final middle = (lineStart + lineEnd) / 2;
+    final lines = _strongestLines(from, to, lineStart, lineEnd, middle, gradient);
+    final strongest = lines.map((line) => line.$3.abs()).reduce(max);
+    final outwardFirst = lines.where((line) => line.$3.abs() >= strongest * _outermostFraction).toList()
+      ..sort((a, b) => offsetOf(a.$1.toDouble()).compareTo(offsetOf(b.$1.toDouble())));
 
-    final polarity = peakValue.sign.toInt();
-    final hitThreshold = max(config.minEdgeStrength, peakValue.abs() * _hitThresholdFactor);
-    var hits = 0;
-    for (var along = lineStart; along < lineEnd; along++) {
-      var best = 0;
-      for (var across = max(from, peak - _lineSlack); across <= min(to, peak + _lineSlack); across++) {
-        best = max(best, gradient(along, across) * polarity);
-      }
-      if (best >= hitThreshold) hits++;
-    }
-
-    final coverage = hits / length;
-    final strength = peakValue.abs();
-
-    return EdgeMeasurement(
-      detected: coverage >= config.minEdgeCoverage && strength >= config.minEdgeStrength,
-      coverage: coverage,
-      strength: strength,
-      offset: offsetOf(peak),
-      skew: _skew(
-        from: from,
-        to: to,
-        peak: peak,
-        threshold: hitThreshold,
-        lineStart: lineStart,
-        lineEnd: lineEnd,
-        polarity: polarity,
-        gradient: gradient,
-        offsetOf: offsetOf,
-      ),
-    );
-  }
-
-  /// Tilt of the edge: where it sits in the first third of the side versus
-  /// the last third. Per position, takes the strong gradient closest to the
-  /// side's main line, so text further inside the card is ignored.
-  double _skew({
-    required int from,
-    required int to,
-    required int peak,
-    required double threshold,
-    required int lineStart,
-    required int lineEnd,
-    required int polarity,
-    required int Function(int along, int across) gradient,
-    required double Function(int across) offsetOf,
-  }) {
-    int? nearestEdge(int along) {
-      for (var distance = 0; distance <= max(peak - from, to - peak); distance++) {
-        for (final across in [peak - distance, peak + distance]) {
-          if (across >= from && across <= to && gradient(along, across) * polarity >= threshold) return across;
+    var measured = EdgeMeasurement.none;
+    for (final (position, slope, value) in outwardFirst) {
+      double lineAt(int along) => position + slope * (along - middle);
+      final polarity = value.sign.toInt();
+      final hitThreshold = max(config.minEdgeStrength, value.abs() * _hitThresholdFactor);
+      var hits = 0;
+      for (var along = lineStart; along < lineEnd; along++) {
+        final center = lineAt(along).round();
+        var best = 0;
+        for (var across = max(from, center - _lineSlack); across <= min(to, center + _lineSlack); across++) {
+          best = max(best, gradient(along, across) * polarity);
         }
+        if (best >= hitThreshold) hits++;
       }
-      return null;
-    }
 
-    double? medianOf(int start, int end) {
-      final positions = List.generate(end - start, (i) => nearestEdge(start + i)).nonNulls.toList()..sort();
-      return positions.isEmpty ? null : offsetOf(positions[positions.length ~/ 2]);
+      final coverage = hits / length;
+      final strength = value.abs();
+      // Tilt: where the edge sits at the middle of the first third versus
+      // the middle of the last third of the side.
+      final third = length / _skewSegments;
+      final skew = (offsetOf(lineAt((lineStart + third / 2).round())) - offsetOf(lineAt((lineEnd - third / 2).round())))
+          .abs();
+      final detected = coverage >= config.minEdgeCoverage && strength >= config.minEdgeStrength;
+      if (detected || measured == EdgeMeasurement.none || strength > measured.strength) {
+        measured = EdgeMeasurement(
+          detected: detected,
+          coverage: coverage,
+          strength: strength,
+          offset: offsetOf(position.toDouble()),
+          skew: skew,
+        );
+      }
+      if (detected) break;
     }
-
-    final third = (lineEnd - lineStart) ~/ _skewSegments;
-    if (third == 0 || polarity == 0) return 0;
-    final first = medianOf(lineStart, lineStart + third);
-    final last = medianOf(lineEnd - third, lineEnd);
-    return first == null || last == null ? 0 : (first - last).abs();
+    return measured;
   }
 
-  /// Position across the band whose mean signed gradient along
-  /// [lineStart]..[lineEnd] is strongest, with that mean.
-  (int, double) _strongestLine(
+  /// For every position across the band, the line through it (slope in grid
+  /// cells per cell along the side) whose mean signed gradient along
+  /// [lineStart]..[lineEnd] is strongest: (position at [middle], slope, mean).
+  List<(int, double, double)> _strongestLines(
     int from,
     int to,
     int lineStart,
     int lineEnd,
+    double middle,
     int Function(int along, int across) gradient,
   ) {
-    var peak = from;
-    var peakValue = 0.0;
+    final lines = <(int, double, double)>[];
     for (var across = from; across <= to; across++) {
-      var sum = 0;
-      for (var along = lineStart; along < lineEnd; along++) {
-        sum += gradient(along, across);
+      var bestSlope = 0.0;
+      var bestValue = 0.0;
+      for (var step = -_slopeSteps; step <= _slopeSteps; step++) {
+        final slope = step * _maxSlope / _slopeSteps;
+        var sum = 0;
+        var count = 0;
+        for (var along = lineStart; along < lineEnd; along++) {
+          final position = (across + slope * (along - middle)).round();
+          if (position < from || position > to) continue;
+          sum += gradient(along, position);
+          count++;
+        }
+        // A line that leaves the band for most of the side is not an edge.
+        if (count < (lineEnd - lineStart) * config.minEdgeCoverage) continue;
+        final mean = sum / (lineEnd - lineStart);
+        if (mean.abs() > bestValue.abs()) {
+          bestValue = mean;
+          bestSlope = slope;
+        }
       }
-      final mean = sum / (lineEnd - lineStart);
-      if (mean.abs() > peakValue.abs()) {
-        peakValue = mean;
-        peak = across;
-      }
+      lines.add((across, bestSlope, bestValue));
     }
-    return (peak, peakValue);
+    return lines;
   }
 
   static const int _minGridSize = 16;
   static const int _lineSlack = 2;
   static const double _hitThresholdFactor = 0.5;
+  static const double _outermostFraction = 0.5;
+  static const double _tooFarFraction = 0.5;
   static const double _interiorInset = 0.1;
   static const int _skewSegments = 3;
+
+  /// Steepest edge searched (about 9°): steeper cards are reported as tilted.
+  static const double _maxSlope = 0.16;
+  static const int _slopeSteps = 8;
   static const double _sharpnessPatch = 0.5;
   static const int _maxSharpnessPatchWidth = 320;
 }

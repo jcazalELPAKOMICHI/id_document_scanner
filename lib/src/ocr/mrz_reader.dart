@@ -26,19 +26,10 @@ class MrzReader {
 
   /// Reads the MRZ inside [zone] (normalized to [card]).
   MrzReading? read(GrayImage card, Rect zone) {
-    // Stay off the card border: shadows and the desk show up as tall strokes.
-    final crop = card.cropNormalized(
-      Rect.fromLTRB(
-        max(zone.left, _cardBorder),
-        max(zone.top, 0),
-        min(zone.right, 1 - _cardBorder),
-        min(zone.bottom, 1 - _cardBorder),
-      ),
-    );
-    final scaled = crop.resize(_workWidth, max(1, (crop.height * _workWidth / crop.width).round()));
-    final threshold = scaled.otsuThreshold();
-    final bands = _textLines(scaled, threshold);
-    if (bands.length != MrzConstants.td1Lines) return null;
+    final (scaled, threshold) = _prepare(card, zone);
+    final allBands = _textLines(scaled, threshold);
+    if (allBands.length < MrzConstants.td1Lines) return null;
+    final bands = allBands.sublist(allBands.length - MrzConstants.td1Lines);
 
     final glyphs = bank ?? OcrbGlyphBank.instance;
     final layouts = <(GrayImage, double, double, List<double>, List<double>)>[];
@@ -62,9 +53,31 @@ class MrzReader {
     return MrzReading(lines: read, candidates: lines, mrz: MrzParser.parse(read), confidence: confidence);
   }
 
-  /// Rows with ink grouped into bands. MRZ lines span (almost) the whole
-  /// zone width and are the last text on the card, so the 3 bottom-most wide
-  /// bands are kept; shorter data lines above the MRZ are ignored.
+  /// Wide text lines found inside [zone], for diagnostics: a readable MRZ
+  /// needs at least 3.
+  int textLineCount(GrayImage card, Rect zone) {
+    final (scaled, threshold) = _prepare(card, zone);
+    return _textLines(scaled, threshold).length;
+  }
+
+  /// [zone] of [card] at the working width, with its ink threshold.
+  (GrayImage, int) _prepare(GrayImage card, Rect zone) {
+    // Stay off the card border: shadows and the desk show up as tall strokes.
+    final crop = card.cropNormalized(
+      Rect.fromLTRB(
+        max(zone.left, _cardBorder),
+        max(zone.top, 0),
+        min(zone.right, 1 - _cardBorder),
+        min(zone.bottom, 1 - _cardBorder),
+      ),
+    );
+    final scaled = crop.resize(_workWidth, max(1, (crop.height * _workWidth / crop.width).round()));
+    return (scaled, scaled.otsuThreshold());
+  }
+
+  /// Rows with ink grouped into bands that span most of the zone width. MRZ
+  /// lines are the last text on the card, so the caller keeps the 3
+  /// bottom-most; shorter data lines above the MRZ are already left out.
   List<(int, int)> _textLines(GrayImage image, int threshold) {
     final counts = List.generate(image.height, (y) {
       var count = 0;
@@ -89,8 +102,7 @@ class MrzReader {
         start = null;
       }
     }
-    if (bands.length < MrzConstants.td1Lines) return const [];
-    return bands.sublist(bands.length - MrzConstants.td1Lines);
+    return bands;
   }
 
   /// Fraction of the width between the first and last inked column of rows

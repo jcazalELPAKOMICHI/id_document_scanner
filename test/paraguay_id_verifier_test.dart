@@ -110,6 +110,17 @@ img.Image legacyFront() {
   return card;
 }
 
+/// An imprecise crop: [card] with a [margin] of desk around it, resized back
+/// to the card size (the header and the MRZ shrink and move).
+img.Image withBackground(img.Image card, {double margin = 0.04}) {
+  final padX = (card.width * margin).round();
+  final padY = (card.height * margin).round();
+  final padded = img.Image(width: card.width + 2 * padX, height: card.height + 2 * padY);
+  img.fill(padded, color: img.ColorRgb8(50, 42, 36));
+  img.compositeImage(padded, card, dstX: padX, dstY: padY);
+  return img.copyResize(padded, width: card.width, height: card.height);
+}
+
 void main() {
   const verifier = ParaguayIdVerifier();
   final front = load('paraguay_id_current_specimen.webp');
@@ -150,6 +161,18 @@ void main() {
       }
     });
 
+    test('recognises both designs when the crop keeps a bit of background', () async {
+      for (final (card, type) in [
+        (front, DocumentType.paraguayIdCurrent),
+        (legacyFront(), DocumentType.paraguayIdLegacy),
+      ]) {
+        final result = verifier.verifyFront(GrayImage.fromImage(withBackground(await captureCard(card))), type);
+        printOnFailure('$type score ${result.score}');
+        expect(result.status, DocumentVerificationStatus.verified);
+        expect(result.detectedType, type);
+      }
+    });
+
     test('the current design is not mistaken for the previous one', () async {
       final result = verifier.verifyFront(await capture(front), .paraguayIdLegacy);
       expect(result.detectedType, DocumentType.paraguayIdCurrent);
@@ -170,6 +193,15 @@ void main() {
       final result = verifier.verifyBack(await capture(back, angle: -2), .paraguayIdLegacy);
       expect(result.status, DocumentVerificationStatus.verified);
       expect(result.detectedType, DocumentType.paraguayIdCurrent);
+    });
+
+    test('reads the MRZ when the crop keeps a bit of background', () async {
+      final result = verifier.verifyBack(
+        GrayImage.fromImage(withBackground(await captureCard(back))),
+        .paraguayIdCurrent,
+      );
+      printOnFailure('${result.reason} ${result.mrzLines?.join(' | ')}');
+      expect(result.status, DocumentVerificationStatus.verified);
     });
 
     test('rejects the front shown as back', () async {

@@ -3,12 +3,12 @@
 /// `showDebugInfo: true` if your devices or documents behave differently.
 class DetectionConfig {
   const DetectionConfig({
-    this.outerSearchBand = 0.10,
+    this.outerSearchBand = 0.14,
     this.innerSearchBand = 0.28,
-    this.edgeTolerance = 0.07,
-    this.maxSkew = 0.05,
+    this.edgeTolerance = 0.10,
+    this.maxSkew = 0.08,
     this.cornerSkip = 0.12,
-    this.minEdgeCoverage = 0.7,
+    this.minEdgeCoverage = 0.6,
     this.minEdgeStrength = 40,
     this.minDetectedSides = 3,
     this.minBrightness = 55,
